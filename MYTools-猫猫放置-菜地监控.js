@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         MYTools-猫猫放置-菜地监控
 // @namespace    http://tampermonkey.net/
-// @version      0.0.1
+// @version      0.0.2
 // @description  为猫猫放置游戏提供菜地监控功能
 // @author       miaoaim over Lingma
 // @match        *://*moyu-idle.com/*
@@ -81,9 +81,16 @@
         // 注册状态栏内容
         unsafeWindow.MYTools.registerPluginStatusBar(
             pluginId,
-            '<div style="font-size:12px;padding:0 5px;">菜地</div>',
+            '<div style="font-size:12px;padding:0 5px;display:flex;align-items:center;"><button id="status-bar-refresh-btn" style="background:transparent;border:none;color:white;font-size:20px;cursor:pointer;margin-right:5px;width:30px;height:30px;display:flex;align-items:center;justify-content:center;" title="手动刷新">🔄</button>菜地</div>',
             (panel) => {
                 // 状态栏创建回调函数
+                const refreshBtn = panel.querySelector('#status-bar-refresh-btn');
+                if (refreshBtn) {
+                    refreshBtn.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        refreshFarmPlotsData();
+                    });
+                }
             }
         );
 
@@ -324,7 +331,8 @@
                     <button id="auto-plant-toggle-btn" style="flex: 1; padding: 4px 8px; font-size: 12px; border: 1px solid transparent; cursor: pointer; background: rgba(129,199,132,0.3); color: #81C784; border: 1px solid #81C784; margin-left: 5px;">自动补种</button>
                 </div>
                 <div style="margin-bottom: 10px; display: flex; align-items: center;">
-                    <button id="monitor-toggle-btn" style="flex: 1; padding: 8px; background: #27ae60; color: white; border: none; border-radius: 4px;">
+                    <button id="refresh-farm-plots-btn" style="width: 30px; height: 30px; cursor: pointer; background: transparent; color: white; border: none; border-radius: 4px; margin-right: 5px; font-size: 20px; display: flex; align-items: center; justify-content: center;" title="手动刷新">🔄</button>
+                    <button id="monitor-toggle-btn" style="flex: 1; padding: 8px; cursor: pointer; background: #27ae60; color: white; border: none; border-radius: 4px;">
                         启动监控
                     </button>
                     <div style="display: flex; align-items: center; margin-left: 10px;">
@@ -455,7 +463,8 @@
             option.appendChild(icon);
             option.appendChild(name);
 
-            option.addEventListener('click', () => {
+            option.addEventListener('click', (e) => {
+                e.stopPropagation();
                 // 设置该地块的种子
                 plotSeedSettings[plotId] = seedId;
                 saveConfig();
@@ -480,7 +489,8 @@
             margin-top: 3px;
         `;
         unsetOption.textContent = '无设置';
-        unsetOption.addEventListener('click', () => {
+        unsetOption.addEventListener('click', (e) => {
+            e.stopPropagation();
             plotSeedSettings[plotId] = 'none'; // 使用'none'而不是null来区分未设置
             saveConfig();
 
@@ -548,6 +558,7 @@
         const autoPlantButton = panel.querySelector('#auto-plant-toggle-btn');
         const monitorIntervalInput = panel.querySelector('#monitor-interval-input');
         const monitorToggleBtn = panel.querySelector('#monitor-toggle-btn');
+        const refreshFarmPlotsBtn = panel.querySelector('#refresh-farm-plots-btn');
 
         // 初始化配置元素值
         updateAutoReplantButton(autoReplantButton, config.autoReplant);
@@ -565,11 +576,11 @@
             updateAutoReplantButton(autoReplantButton, config.autoReplant);
         });
 
-        fertilizerButton.addEventListener('click', () => {
-            config.useFertilizer = !config.useFertilizer;
-            saveConfig();
-            updateFertilizerButton(fertilizerButton, config.useFertilizer);
-        });
+        // fertilizerButton.addEventListener('click', () => {
+        //     config.useFertilizer = !config.useFertilizer;
+        //     saveConfig();
+        //     updateFertilizerButton(fertilizerButton, config.useFertilizer);
+        // });
 
         replantCropsButton.addEventListener('click', () => {
             config.replantCrops = !config.replantCrops;
@@ -616,6 +627,11 @@
             }
             saveConfig();
             updateMonitorButtonStyle(monitorToggleBtn, config.monitorStatus);
+        });
+
+        // 添加刷新按钮事件监听器
+        refreshFarmPlotsBtn.addEventListener('click', () => {
+            refreshFarmPlotsData();
         });
     }
 
@@ -743,7 +759,7 @@
     // 启动监控
     function startMonitor() {
         stopMonitor(); // 先清除现有的定时器
-
+        refreshFarmPlotsData();
         monitorIntervalId = setInterval(() => {
             refreshFarmPlotsData();
         }, config.monitorInterval * 1000);
