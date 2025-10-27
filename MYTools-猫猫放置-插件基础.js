@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         MYTools-猫猫放置-插件基础
 // @namespace    http://tampermonkey.net/
-// @version      1.0.12
+// @version      1.0.13
 // @description  为猫猫放置游戏提供统一的 WebSocket 拦截和消息处理基础封装
 // @author       miaoaim over Lingma
 // @downloadURL  https://github.com/nyChers/MoyuTools/blob/master/MYTools-%E7%8C%AB%E7%8C%AB%E6%94%BE%E7%BD%AE-%E6%8F%92%E4%BB%B6%E5%9F%BA%E7%A1%80.js
@@ -1992,7 +1992,7 @@
         sendActionMessage,
         getCurrentSocket: () => currentSocket,
         getUserInfo: () => userInfo,
-        isReady: () => isUIReady && isWSReady,
+        isReady: () => isUIReady && isWSReady && userInfo !== null,
         // 添加插件注册接口
         registerPluginIcon,
         registerPluginPanel,
