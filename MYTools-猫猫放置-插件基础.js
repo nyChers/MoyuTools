@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         MYTools-猫猫放置-插件基础
-// @namespace    http://tampermonkey.net/
+// @namespace    https://github.com/nyChers/MoyuTools
 // @version      1.0.13
 // @description  为猫猫放置游戏提供统一的 WebSocket 拦截和消息处理基础封装
 // @author       miaoaim over Lingma
