@@ -1,9 +1,10 @@
 // ==UserScript==
-// @name         MYTools-猫猫放置插件基础
+// @name         MYTools-猫猫放置-插件基础
 // @namespace    http://tampermonkey.net/
-// @version      1.0.11
+// @version      1.0.12
 // @description  为猫猫放置游戏提供统一的 WebSocket 拦截和消息处理基础封装
 // @author       miaoaim over Lingma
+// @downloadURL  https://github.com/nyChers/MoyuTools/blob/master/MYTools-%E7%8C%AB%E7%8C%AB%E6%94%BE%E7%BD%AE-%E6%8F%92%E4%BB%B6%E5%9F%BA%E7%A1%80.js
 // @match        *://*moyu-idle.com/*
 // @match        *://www.moyu-idle.com/*
 // @grant        unsafeWindow
@@ -40,14 +41,16 @@
     };
 
     // 插件面板位置配置
-    const PLUGIN_PANEL_CONFIG = {
-        positions: GM_getValue('mytools_plugin_panel_positions', {}) // 保存各插件面板位置和类型
-    };
+    const PLUGIN_PANEL_CONFIG = GM_getValue('mytools_plugin_panel_config', {}); // 保存各插件面板位置、类型和打开状态
+    console.debug('[MYTools] 子插件面板配置: ', PLUGIN_PANEL_CONFIG)
 
     // 全局 WebSocket 实例引用
     let currentSocket = null;
     let userInfo = null;
     let lastMessageType = null; // 存储上一条消息的类型
+
+    let isWSReady = false;
+    let isUIReady = false;
 
     // 消息状态管理
     let messageStatus = {
@@ -181,6 +184,7 @@
             });
         }
 
+        isWSReady = true;
         console.log('[MYTools] 拦截器部署完成');
     }
 
@@ -470,8 +474,8 @@
             } else {
                 // 否则执行默认的面板显示事件
                 // 检查保存的面板类型并显示对应面板
-                const savedPosition = PLUGIN_PANEL_CONFIG.positions[stableId];
-                if (savedPosition && savedPosition.panelType === 'statusBar') {
+                const pluginConfig = PLUGIN_PANEL_CONFIG[stableId];
+                if (pluginConfig && pluginConfig.type === 'statusBar') {
                     // 显示状态栏
                     showStatusBar({ stableId, icon, title });
                 } else {
@@ -526,7 +530,7 @@
             return;
         }
 
-        const position = PLUGIN_PANEL_CONFIG.positions[plugin.stableId] || { x: 100, y: 100 };
+        const position = PLUGIN_PANEL_CONFIG[plugin.stableId]?.position || { x: 100, y: 100 };
 
         registeredPanels.set(plugin.stableId, {
             title: plugin.title,
@@ -534,6 +538,14 @@
             position,
             createdCallback
         });
+
+        // 如果该面板之前是打开的，则自动显示
+        if (PLUGIN_PANEL_CONFIG[plugin.stableId] && PLUGIN_PANEL_CONFIG[plugin.stableId].isOpen
+            && PLUGIN_PANEL_CONFIG[plugin.stableId].type === 'panel') {
+            setTimeout(() => {
+                showPluginPanel(pluginId);
+            }, 1000);
+        }
     }
 
     // 注册插件状态栏内容
@@ -548,6 +560,14 @@
             content,
             createdCallback
         });
+
+        // 如果该面板之前是打开的，则自动显示
+        if (PLUGIN_PANEL_CONFIG[plugin.stableId] && PLUGIN_PANEL_CONFIG[plugin.stableId].isOpen
+            && PLUGIN_PANEL_CONFIG[plugin.stableId].type === 'statusBar') {
+            setTimeout(() => {
+                showStatusBar(plugin);
+            }, 1000);
+        }
     }
 
     // 显示插件面板
@@ -669,8 +689,8 @@
             let position;
             if (panelData && panelData.position) {
                 position = panelData.position;
-            } else if (PLUGIN_PANEL_CONFIG.positions[plugin.stableId]) {
-                position = PLUGIN_PANEL_CONFIG.positions[plugin.stableId];
+            } else if (PLUGIN_PANEL_CONFIG[plugin.stableId]) {
+                position = PLUGIN_PANEL_CONFIG[plugin.stableId].position;
             } else {
                 // 默认位置与主配置面板一致
                 position = calculateDefaultPanelPosition(panelWidth, panelHeight);
@@ -685,16 +705,10 @@
             pinButton.addEventListener('click', () => {
                 // 保存面板位置
                 const rect = panel.getBoundingClientRect();
-                if (!PLUGIN_PANEL_CONFIG.positions[plugin.stableId]) {
-                    PLUGIN_PANEL_CONFIG.positions[plugin.stableId] = {};
-                }
-                PLUGIN_PANEL_CONFIG.positions[plugin.stableId].x = rect.left;
-                PLUGIN_PANEL_CONFIG.positions[plugin.stableId].y = rect.top;
-                savePluginPanelPosition(plugin.stableId, rect.left, rect.top, 'statusBar');
+                savePluginPanelConfig(plugin.stableId, rect.left, rect.top, 'statusBar', true);
 
                 // 隐藏当前面板
                 panel.style.display = 'none';
-
                 // 创建状态栏图标，传递面板位置信息
                 showStatusBar(plugin, rect.left, rect.top);
             });
@@ -703,13 +717,8 @@
             closeButton.addEventListener('click', () => {
                 // 保存面板位置
                 const rect = panel.getBoundingClientRect();
-                if (!PLUGIN_PANEL_CONFIG.positions[plugin.stableId]) {
-                    PLUGIN_PANEL_CONFIG.positions[plugin.stableId] = {};
-                }
-                PLUGIN_PANEL_CONFIG.positions[plugin.stableId].x = rect.left;
-                PLUGIN_PANEL_CONFIG.positions[plugin.stableId].y = rect.top;
-                savePluginPanelPosition(plugin.stableId, rect.left, rect.top, 'panel');
                 panel.style.display = 'none';
+                savePluginPanelConfig(plugin.stableId, rect.left, rect.top, 'panel', false);
             });
 
             // 添加拖动功能
@@ -719,13 +728,8 @@
                 (x, y) => {
                     panel.style.left = `${x}px`;
                     panel.style.top = `${y}px`;
-                    // 保存位置
-                    if (!PLUGIN_PANEL_CONFIG.positions[plugin.stableId]) {
-                        PLUGIN_PANEL_CONFIG.positions[plugin.stableId] = {};
-                    }
-                    PLUGIN_PANEL_CONFIG.positions[plugin.stableId].x = x;
-                    PLUGIN_PANEL_CONFIG.positions[plugin.stableId].y = y;
-                    savePluginPanelPosition(plugin.stableId, x, y, 'panel');
+                    savePluginPanelConfig(plugin.stableId, x, y, 'panel',
+                        PLUGIN_PANEL_CONFIG[plugin.stableId]?.isOpen || false);
                 }
             );
 
@@ -747,6 +751,12 @@
             if (panelData && typeof panelData.createdCallback === 'function') {
                 panelData.createdCallback(panel);
             }
+
+            savePluginPanelConfig(plugin.stableId,
+                parseInt(panel.style.left) || 0,
+                parseInt(panel.style.top) || 0,
+                'panel',
+                true); // 面板打开
         } else {
             // 面板已存在，切换显示/隐藏状态
             if (panel.style.display === 'none') {
@@ -757,18 +767,19 @@
                 if (statusBarPanel) {
                     statusBarPanel.style.display = 'none';
                 }
+
+                // 保存面板打开状态
+                savePluginPanelConfig(plugin.stableId,
+                    parseInt(panel.style.left) || 0,
+                    parseInt(panel.style.top) || 0,
+                    'panel',
+                    true); // 面板打开
             } else {
                 // 保存面板位置
                 const rect = panel.getBoundingClientRect();
-                if (!PLUGIN_PANEL_CONFIG.positions[plugin.stableId]) {
-                    PLUGIN_PANEL_CONFIG.positions[plugin.stableId] = {};
-                }
-                PLUGIN_PANEL_CONFIG.positions[plugin.stableId].x = rect.left;
-                PLUGIN_PANEL_CONFIG.positions[plugin.stableId].y = rect.top;
-                savePluginPanelPosition(plugin.stableId, rect.left, rect.top, 'panel');
-
                 // 隐藏当前面板
                 panel.style.display = 'none';
+                savePluginPanelConfig(plugin.stableId, rect.left, rect.top, 'panel', false); // 面板关闭
             }
         }
     }
@@ -780,7 +791,7 @@
         if (!statusBarPanel) {
             // 如果没有提供位置信息，则尝试从保存的位置加载
             if (x === undefined || y === undefined) {
-                const savedPosition = PLUGIN_PANEL_CONFIG.positions[plugin.stableId];
+                const savedPosition = PLUGIN_PANEL_CONFIG[plugin.stableId]?.position;
                 // 使用统一的位置信息
                 if (savedPosition && savedPosition.x !== undefined && savedPosition.y !== undefined) {
                     x = savedPosition.x;
@@ -840,13 +851,7 @@
                     panel.style.top = `${rect.top}px`;
                     panel.style.display = 'block';
 
-                    // 保存新位置
-                    if (!PLUGIN_PANEL_CONFIG.positions[plugin.stableId]) {
-                        PLUGIN_PANEL_CONFIG.positions[plugin.stableId] = {};
-                    }
-                    PLUGIN_PANEL_CONFIG.positions[plugin.stableId].x = rect.left;
-                    PLUGIN_PANEL_CONFIG.positions[plugin.stableId].y = rect.top;
-                    savePluginPanelPosition(plugin.stableId, rect.left, rect.top, 'panel');
+                    savePluginPanelConfig(plugin.stableId, rect.left, rect.top, 'panel', true);
                 } else {
                     // 如果面板不存在，创建并显示面板
                     showPluginPanel(registeredPlugins.findIndex(p => p.stableId === plugin.stableId));
@@ -881,7 +886,7 @@
                 statusBarPanel.style.top = `${newY}px`;
 
                 // 保存状态栏面板位置
-                savePluginPanelPosition(plugin.stableId, newX, newY, 'statusBar');
+                savePluginPanelConfig(plugin.stableId, newX, newY, 'statusBar', true);
             });
 
             // 添加到页面
@@ -891,8 +896,10 @@
             if (typeof statusBarData?.createdCallback === 'function') {
                 statusBarData.createdCallback(statusBarPanel);
             }
+            savePluginPanelConfig(plugin.stableId, x, y, 'statusBar', true);
         } else {
             // 状态栏面板已存在，切换显示/隐藏状态
+            const rect = statusBarPanel.getBoundingClientRect();
             if (statusBarPanel.style.display === 'none') {
                 statusBarPanel.style.display = 'flex';
 
@@ -901,15 +908,10 @@
                 if (mainPanel && mainPanel.style.display !== 'none') {
                     mainPanel.style.display = 'none';
                 }
+                savePluginPanelConfig(plugin.stableId, rect.left, rect.top, 'statusBar', true);
             } else {
                 // 保存位置信息
-                const rect = statusBarPanel.getBoundingClientRect();
-                if (!PLUGIN_PANEL_CONFIG.positions[plugin.stableId]) {
-                    PLUGIN_PANEL_CONFIG.positions[plugin.stableId] = {};
-                }
-                PLUGIN_PANEL_CONFIG.positions[plugin.stableId].x = rect.left;
-                PLUGIN_PANEL_CONFIG.positions[plugin.stableId].y = rect.top;
-                savePluginPanelPosition(plugin.stableId, rect.left, rect.top, 'statusBar');
+                savePluginPanelConfig(plugin.stableId, rect.left, rect.top, 'statusBar', false);
 
                 statusBarPanel.style.display = 'none';
             }
@@ -1092,6 +1094,17 @@
         GM_setValue('mytools_panel_x', UI_CONFIG.panelPosition.x);
         GM_setValue('mytools_panel_y', UI_CONFIG.panelPosition.y);
         GM_setValue('mytools_panel_minimized', UI_CONFIG.panelMinimized);
+    }
+
+    // 保存插件面板位置和类型
+    function savePluginPanelConfig(stableId, x, y, panelType = 'panel', isOpen = false) {
+        PLUGIN_PANEL_CONFIG[stableId] = {
+            ...(PLUGIN_PANEL_CONFIG[stableId] || {}),
+            position: { x, y },
+            type: panelType, // 'panel' 或 'statusBar'
+            isOpen
+        };
+        GM_setValue('mytools_plugin_panel_config', PLUGIN_PANEL_CONFIG);
     }
 
     // 自动保存配置（无需手动点击保存）
@@ -1547,6 +1560,8 @@
 
         // 添加事件监听器
         initUIEventListeners();
+
+        isUIReady = true;
     }
 
     // 调整面板位置，确保面板在屏幕内显示
@@ -1810,12 +1825,9 @@
                     // 保存插件面板位置
                     const stableId = panel.dataset.stableId;
                     if (stableId) {
-                        if (!PLUGIN_PANEL_CONFIG.positions[stableId]) {
-                            PLUGIN_PANEL_CONFIG.positions[stableId] = {};
-                        }
-                        PLUGIN_PANEL_CONFIG.positions[stableId].x = finalLeft;
-                        PLUGIN_PANEL_CONFIG.positions[stableId].y = finalTop;
-                        savePluginPanelPosition(stableId, finalLeft, finalTop);
+                        savePluginPanelConfig(stableId, finalLeft, finalTop,
+                            PLUGIN_PANEL_CONFIG[stableId]?.type || 'panel',
+                            PLUGIN_PANEL_CONFIG[stableId]?.isOpen || false);
                     }
                 } else {
                     element.style.left = `${finalLeft}px`;
@@ -1929,27 +1941,6 @@
         return { x: panelLeft, y: panelTop };
     }
 
-    // 保存插件面板位置和类型
-    function savePluginPanelPosition(stableId, x, y, panelType = 'panel') {
-        PLUGIN_PANEL_CONFIG.positions[stableId] = {
-            ...(PLUGIN_PANEL_CONFIG.positions[stableId] || {}),
-            x,
-            y,
-            panelType // 'panel' 或 'statusBar'
-        };
-        GM_setValue('mytools_plugin_panel_positions', PLUGIN_PANEL_CONFIG.positions);
-    }
-
-    // 保存插件面板位置（用于状态栏面板）
-    function saveStatusBarPanelPosition(stableId, x, y) {
-        PLUGIN_PANEL_CONFIG.positions[stableId] = {
-            ...(PLUGIN_PANEL_CONFIG.positions[stableId] || {}),
-            statusBarX: x,
-            statusBarY: y
-        };
-        GM_setValue('mytools_plugin_panel_positions', PLUGIN_PANEL_CONFIG.positions);
-    }
-
     // 添加日志到指定插件面板
     function addPluginLog(pluginId, message) {
         const plugin = registeredPlugins[pluginId];
@@ -2001,6 +1992,7 @@
         sendActionMessage,
         getCurrentSocket: () => currentSocket,
         getUserInfo: () => userInfo,
+        isReady: () => isUIReady && isWSReady,
         // 添加插件注册接口
         registerPluginIcon,
         registerPluginPanel,
