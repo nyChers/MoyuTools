@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         MYTools-猫猫放置-菜地监控
-// @namespace    http://tampermonkey.net/
-// @version      0.0.3
+// @namespace    https://github.com/nyChers/MoyuTools
+// @version      0.0.4
 // @description  为猫猫放置游戏提供菜地监控功能
 // @author       miaoaim over Lingma
 // @match        *://*moyu-idle.com/*
@@ -48,7 +48,7 @@
     // 等待MYTools加载完成
     function waitForMYTools(callback) {
         const checkInterval = setInterval(() => {
-            if (unsafeWindow.MYTools) {
+            if (unsafeWindow.MYTools && unsafeWindow.MYTools.isReady()) {
                 clearInterval(checkInterval);
                 callback();
             }
@@ -64,35 +64,6 @@
         pluginId = unsafeWindow.MYTools.registerPluginIcon(
             '🌱', // 使用幼苗emoji作为图标
             '菜地监控'
-        );
-
-        // 创建面板内容 - 3x3九宫格布局
-        const panelContent = createFarmPanelContent();
-
-        // 注册插件面板
-        unsafeWindow.MYTools.registerPluginPanel(
-            pluginId,
-            panelContent,
-            (panel) => {
-                // 面板创建回调函数
-                setupFarmPanel(panel);
-            }
-        );
-
-        // 注册状态栏内容
-        unsafeWindow.MYTools.registerPluginStatusBar(
-            pluginId,
-            '<div style="font-size:12px;padding:0 5px;display:flex;align-items:center;"><button id="status-bar-refresh-btn" style="background:transparent;border:none;color:white;font-size:20px;cursor:pointer;margin-right:5px;width:36px;height:36px;display:flex;align-items:center;justify-content:center;" title="手动刷新">🔄</button></div>',
-            (panel) => {
-                // 状态栏创建回调函数
-                const refreshBtn = panel.querySelector('#status-bar-refresh-btn');
-                if (refreshBtn) {
-                    refreshBtn.addEventListener('click', (e) => {
-                        e.stopPropagation();
-                        refreshFarmPlotsData();
-                    });
-                }
-            }
         );
 
         unsafeWindow.MYTools.registerSendMessageHandler(/.*farm:plot.*/, (type, payload, originalData) => {
@@ -135,6 +106,37 @@
             // 更新UI显示
             updateFarmPlotsDisplay();
         });
+
+        // 创建面板内容 - 3x3九宫格布局
+        const panelContent = createFarmPanelContent();
+        // 注册插件面板
+        unsafeWindow.MYTools.registerPluginPanel(
+            pluginId,
+            panelContent,
+            (panel) => {
+                // 面板创建回调函数
+                setupFarmPanel(panel);
+                refreshFarmPlotsData();
+            }
+        );
+        // 注册状态栏内容
+        unsafeWindow.MYTools.registerPluginStatusBar(
+            pluginId,
+            '<button id="status-bar-refresh-btn" style="background: #3498db; color: white; border: none; border-radius: 4px; cursor: pointer; padding: 2px 6px; font-size: 12px; height: 24px; margin: 0 2px;">🔄</button>',
+            (panel) => {
+                // 状态栏创建回调函数
+                const refreshBtn = panel.querySelector('#status-bar-refresh-btn');
+                if (refreshBtn) {
+                    refreshBtn.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        refreshFarmPlotsData();
+                    });
+                }
+                refreshFarmPlotsData();
+            }
+        );
+
+        console.log('[菜地监控] 插件初始化完成');
 
         // 启动监听的时候，添加监听数据刷新事件
         window.addEventListener('farmPlotDataUpdated', monitorPlotAction);
@@ -348,7 +350,6 @@
 
     // 设置菜地监控面板
     function setupFarmPanel(panel) {
-        refreshFarmPlotsData();
         // 可以在这里添加面板事件监听器
         const farmPlots = panel.querySelectorAll('.farm-plot');
 
