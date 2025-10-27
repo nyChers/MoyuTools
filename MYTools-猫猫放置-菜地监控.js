@@ -1,11 +1,12 @@
 // ==UserScript==
 // @name         MYTools-猫猫放置-菜地监控
 // @namespace    http://tampermonkey.net/
-// @version      0.0.2
+// @version      0.0.3
 // @description  为猫猫放置游戏提供菜地监控功能
 // @author       miaoaim over Lingma
 // @match        *://*moyu-idle.com/*
 // @match        *://www.moyu-idle.com/*
+// @downloadURL  https://github.com/nyChers/MoyuTools/blob/master/MYTools-%E7%8C%AB%E7%8C%AB%E6%94%BE%E7%BD%AE-%E8%8F%9C%E5%9C%B0%E7%9B%91%E6%8E%A7.js
 // @grant        unsafeWindow
 // @grant        GM_getValue
 // @grant        GM_setValue
@@ -81,7 +82,7 @@
         // 注册状态栏内容
         unsafeWindow.MYTools.registerPluginStatusBar(
             pluginId,
-            '<div style="font-size:12px;padding:0 5px;display:flex;align-items:center;"><button id="status-bar-refresh-btn" style="background:transparent;border:none;color:white;font-size:20px;cursor:pointer;margin-right:5px;width:30px;height:30px;display:flex;align-items:center;justify-content:center;" title="手动刷新">🔄</button>菜地</div>',
+            '<div style="font-size:12px;padding:0 5px;display:flex;align-items:center;"><button id="status-bar-refresh-btn" style="background:transparent;border:none;color:white;font-size:20px;cursor:pointer;margin-right:5px;width:36px;height:36px;display:flex;align-items:center;justify-content:center;" title="手动刷新">🔄</button></div>',
             (panel) => {
                 // 状态栏创建回调函数
                 const refreshBtn = panel.querySelector('#status-bar-refresh-btn');
@@ -751,7 +752,7 @@
         }
 
         // 铲除换种
-        if (config.replantCrops && plotData.state === 'GROWING') {
+        if (config.replantCrops && plotData.state === 'GROWING' && plotData.seedId != plotSeedSettings[plotId]) {
             shovelFarmPlot(plotId);
         }
     }
