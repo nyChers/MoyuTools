@@ -1,15 +1,15 @@
 // ==UserScript==
 // @name         MYTools-猫猫放置-快捷指令
 // @namespace    http://tampermonkey.net/
-// @version      0.0.1
+// @version      0.0.2
 // @description  为猫猫放置游戏提供快捷指令功能
 // @author       miaoaim over Lingma
 // @match        *://*moyu-idle.com/*
 // @match        *://www.moyu-idle.com/*
+// @downloadURL  https://github.com/nyChers/MoyuTools/blob/master/MYTools-%E7%8C%AB%E7%8C%AB%E6%94%BE%E7%BD%AE-%E5%BF%AB%E6%8D%B7%E6%8C%87%E4%BB%A4.js
 // @grant        unsafeWindow
 // @grant        GM_getValue
 // @grant        GM_setValue
-// @require      https://cdnjs.cloudflare.com/ajax/libs/pako/2.1.0/pako.min.js
 // @run-at       document-start
 // ==/UserScript==
 
@@ -32,7 +32,7 @@
     // 等待MYTools加载完成
     function waitForMYTools(callback) {
         const checkInterval = setInterval(() => {
-            if (unsafeWindow.MYTools) {
+            if (unsafeWindow.MYTools && unsafeWindow.MYTools.isReady()) {
                 clearInterval(checkInterval);
                 callback();
             }
@@ -140,7 +140,7 @@
             harvestBoxState.data = null;
 
             // 发送查询收获箱消息
-            unsafeWindow.MYTools.sendActionMessage('harvestBox:list', { includeClaimed: false });
+            unsafeWindow.MYTools.sendActionMessage('harvestBox:list', { includeClaimed: false, take: 100 });
         }
 
         // 等待数据准备就绪
