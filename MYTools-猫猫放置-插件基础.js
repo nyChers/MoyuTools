@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         MYTools-猫猫放置-插件基础
 // @namespace    https://github.com/nyChers/MoyuTools
-// @version      1.0.13
+// @version      1.0.14
 // @description  为猫猫放置游戏提供统一的 WebSocket 拦截和消息处理基础封装
 // @author       miaoaim over Lingma
 // @downloadURL  https://github.com/nyChers/MoyuTools/blob/master/MYTools-%E7%8C%AB%E7%8C%AB%E6%94%BE%E7%BD%AE-%E6%8F%92%E4%BB%B6%E5%9F%BA%E7%A1%80.js
@@ -687,10 +687,10 @@
 
             // 获取面板位置
             let position;
-            if (panelData && panelData.position) {
-                position = panelData.position;
-            } else if (PLUGIN_PANEL_CONFIG[plugin.stableId]) {
+            if (PLUGIN_PANEL_CONFIG[plugin.stableId] && PLUGIN_PANEL_CONFIG[plugin.stableId].position) {
                 position = PLUGIN_PANEL_CONFIG[plugin.stableId].position;
+            } else if (panelData && panelData.position) {
+                position = panelData.position;
             } else {
                 // 默认位置与主配置面板一致
                 position = calculateDefaultPanelPosition(panelWidth, panelHeight);
@@ -703,14 +703,10 @@
 
             // 添加固定按钮事件
             pinButton.addEventListener('click', () => {
-                // 保存面板位置
-                const rect = panel.getBoundingClientRect();
-                savePluginPanelConfig(plugin.stableId, rect.left, rect.top, 'statusBar', true);
-
                 // 隐藏当前面板
                 panel.style.display = 'none';
                 // 创建状态栏图标，传递面板位置信息
-                showStatusBar(plugin, rect.left, rect.top);
+                showStatusBar(plugin);
             });
 
             // 添加关闭按钮事件
@@ -718,7 +714,7 @@
                 // 保存面板位置
                 const rect = panel.getBoundingClientRect();
                 panel.style.display = 'none';
-                savePluginPanelConfig(plugin.stableId, rect.left, rect.top, 'panel', false);
+                savePluginPanelConfig(plugin.stableId, { isOpen: false });
             });
 
             // 添加拖动功能
@@ -728,8 +724,7 @@
                 (x, y) => {
                     panel.style.left = `${x}px`;
                     panel.style.top = `${y}px`;
-                    savePluginPanelConfig(plugin.stableId, x, y, 'panel',
-                        PLUGIN_PANEL_CONFIG[plugin.stableId]?.isOpen || false);
+                    savePluginPanelConfig(plugin.stableId, { position: { x, y } });
                 }
             );
 
@@ -752,11 +747,7 @@
                 panelData.createdCallback(panel);
             }
 
-            savePluginPanelConfig(plugin.stableId,
-                parseInt(panel.style.left) || 0,
-                parseInt(panel.style.top) || 0,
-                'panel',
-                true); // 面板打开
+            savePluginPanelConfig(plugin.stableId, { position: position, type: 'panel', isOpen: true }); // 面板打开
         } else {
             // 面板已存在，切换显示/隐藏状态
             if (panel.style.display === 'none') {
@@ -769,17 +760,13 @@
                 }
 
                 // 保存面板打开状态
-                savePluginPanelConfig(plugin.stableId,
-                    parseInt(panel.style.left) || 0,
-                    parseInt(panel.style.top) || 0,
-                    'panel',
-                    true); // 面板打开
+                savePluginPanelConfig(plugin.stableId, { type: 'panel', isOpen: true }); // 面板打开
             } else {
                 // 保存面板位置
                 const rect = panel.getBoundingClientRect();
                 // 隐藏当前面板
                 panel.style.display = 'none';
-                savePluginPanelConfig(plugin.stableId, rect.left, rect.top, 'panel', false); // 面板关闭
+                savePluginPanelConfig(plugin.stableId, { isOpen: false }); // 面板关闭
             }
         }
     }
@@ -851,7 +838,7 @@
                     panel.style.top = `${rect.top}px`;
                     panel.style.display = 'block';
 
-                    savePluginPanelConfig(plugin.stableId, rect.left, rect.top, 'panel', true);
+                    savePluginPanelConfig(plugin.stableId, { type: 'panel' });
                 } else {
                     // 如果面板不存在，创建并显示面板
                     showPluginPanel(registeredPlugins.findIndex(p => p.stableId === plugin.stableId));
@@ -886,7 +873,7 @@
                 statusBarPanel.style.top = `${newY}px`;
 
                 // 保存状态栏面板位置
-                savePluginPanelConfig(plugin.stableId, newX, newY, 'statusBar', true);
+                savePluginPanelConfig(plugin.stableId, { position: { x: newX, y: newY } });
             });
 
             // 添加到页面
@@ -896,7 +883,7 @@
             if (typeof statusBarData?.createdCallback === 'function') {
                 statusBarData.createdCallback(statusBarPanel);
             }
-            savePluginPanelConfig(plugin.stableId, x, y, 'statusBar', true);
+            savePluginPanelConfig(plugin.stableId, { position: { x, y }, type: 'statusBar', isOpen: true });
         } else {
             // 状态栏面板已存在，切换显示/隐藏状态
             const rect = statusBarPanel.getBoundingClientRect();
@@ -908,11 +895,8 @@
                 if (mainPanel && mainPanel.style.display !== 'none') {
                     mainPanel.style.display = 'none';
                 }
-                savePluginPanelConfig(plugin.stableId, rect.left, rect.top, 'statusBar', true);
+                savePluginPanelConfig(plugin.stableId, { type: 'statusBar', isOpen: true });
             } else {
-                // 保存位置信息
-                savePluginPanelConfig(plugin.stableId, rect.left, rect.top, 'statusBar', false);
-
                 statusBarPanel.style.display = 'none';
             }
         }
@@ -1097,12 +1081,10 @@
     }
 
     // 保存插件面板位置和类型
-    function savePluginPanelConfig(stableId, x, y, panelType = 'panel', isOpen = false) {
+    function savePluginPanelConfig(stableId, config) {
         PLUGIN_PANEL_CONFIG[stableId] = {
             ...(PLUGIN_PANEL_CONFIG[stableId] || {}),
-            position: { x, y },
-            type: panelType, // 'panel' 或 'statusBar'
-            isOpen
+            ...config
         };
         GM_setValue('mytools_plugin_panel_config', PLUGIN_PANEL_CONFIG);
     }
@@ -1825,9 +1807,7 @@
                     // 保存插件面板位置
                     const stableId = panel.dataset.stableId;
                     if (stableId) {
-                        savePluginPanelConfig(stableId, finalLeft, finalTop,
-                            PLUGIN_PANEL_CONFIG[stableId]?.type || 'panel',
-                            PLUGIN_PANEL_CONFIG[stableId]?.isOpen || false);
+                        savePluginPanelConfig(stableId, { position: { x: finalLeft, y: finalTop } });
                     }
                 } else {
                     element.style.left = `${finalLeft}px`;
