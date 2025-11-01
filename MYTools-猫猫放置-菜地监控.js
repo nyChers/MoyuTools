@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         MYTools-猫猫放置-菜地监控
 // @namespace    https://github.com/nyChers/MoyuTools
-// @version      0.0.4
+// @version      0.0.5
 // @description  为猫猫放置游戏提供菜地监控功能
 // @author       miaoaim over Lingma
 // @match        *://*moyu-idle.com/*
@@ -74,8 +74,9 @@
         unsafeWindow.MYTools.registerMessageHandler(/.*farm:plot.*/, (type, payload, originalData) => {
             let res = "success"
             if (!type.includes('success')) {
-                res = 'failed';
+                res = 'fail';
                 console.error(`[菜地监控] 菜地失败消息: 类型 ${type}, 数据 `, payload);
+                addLog(`失败 ${payload.data.msg}`);
                 return;
             }
             console.debug(`[菜地监控] 接收消息: 类型 ${type}, 数据 `, payload);
@@ -84,10 +85,11 @@
                     // 处理菜地数据
                     updateFarmPlotsData(payload.data.list);
                     break;
-                case 'data:farm:plot:autoReplant:success':
-                case 'data:farm:plot:harvest:success':
-                case 'data:farm:plot:plant:success':
-                case 'data:farm:plot:shovel:success':
+                case 'data:farm:plot:autoReplant:success': // 村长的神奇补种
+                case 'data:farm:plot:harvest:success': // 收获
+                case 'data:farm:plot:plant:success': // 播种
+                case 'data:farm:plot:shovel:success': // 铲地
+                case 'data:farm:plot:unlock:success': // 开垦
                     updateOneFarmPlotsData(payload.data.plot);
                     // 收获菜地数据成功
                     break;
@@ -96,6 +98,7 @@
                 case 'farm:plot:harvest:success':
                 case 'farm:plot:plant:success':
                 case 'farm:plot:shovel:success':
+                case 'farm:plot:unlock:success':
                     break;
                 default:
                     // 其他消息处理
@@ -122,7 +125,7 @@
         // 注册状态栏内容
         unsafeWindow.MYTools.registerPluginStatusBar(
             pluginId,
-            '<button id="status-bar-refresh-btn" style="background: #3498db; color: white; border: none; border-radius: 4px; cursor: pointer; padding: 2px 6px; font-size: 12px; height: 24px; margin: 0 2px;">🔄</button>',
+            '<button id="status-bar-refresh-btn" style="width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; cursor: pointer; border-radius: 50%; font-size: 20px; transition: all 0.2s; flex-shrink: 0; background: transparent; color: white; border: none;">🔄</button>',
             (panel) => {
                 // 状态栏创建回调函数
                 const refreshBtn = panel.querySelector('#status-bar-refresh-btn');
@@ -254,10 +257,13 @@
                 plot.classList.remove('cursor-shovel', 'cursor-sickle');
                 plot.classList.add('cursor-seed');
             } else {
-                // 默认状态（未知状态）提示
-                plot.title = '';
-                plot.classList.remove('cursor-shovel', 'cursor-sickle', 'cursor-seed');
-                plot.style.cursor = 'default';
+                // 默认状态 未开垦 - 显示灰色
+                plot.style.border = '2px solid #808080';
+
+                // 未开垦状态提示
+                plot.title = '点击开垦';
+                plot.classList.remove('cursor-shovel', 'cursor-sickle');
+                plot.classList.add('cursor-seed');
             }
         });
     }
@@ -372,7 +378,8 @@
                     // 种植作物
                     plantFarmPlot(plotId);
                 } else {
-                    // 如果没有数据或者状态未知，什么都不做
+                    // 未开垦状态 - 执行开垦
+                    unlockFarmPlot(plotId);
                 }
             });
         });
@@ -798,6 +805,13 @@
         unsafeWindow.MYTools.sendActionMessage('farm:plot:shovel', { "plotIndex": plotId });
         addLog(`开始铲除菜地 ${plotId + 1} ...`);
     }
+
+    // 开垦
+    function unlockFarmPlot(plotId) {
+        unsafeWindow.MYTools.sendActionMessage('farm:plot:unlock', { "plotIndex": plotId });
+        addLog(`开始开垦菜地 ${plotId + 1} ...`);
+    }
+
 
     // 种植作物到菜地
     function plantFarmPlot(plotId) {
