@@ -6,7 +6,8 @@
 // @author       miaoaim over Lingma
 // @match        *://*moyu-idle.com/*
 // @match        *://www.moyu-idle.com/*
-// @downloadURL  https://github.com/nyChers/MoyuTools/blob/master/MYTools-%E7%8C%AB%E7%8C%AB%E6%94%BE%E7%BD%AE-%E8%8F%9C%E5%9C%B0%E7%9B%91%E6%8E%A7.js
+// @downloadURL  https://raw.githubusercontent.com/nyChers/MoyuTools/master/MYTools-%E7%8C%AB%E7%8C%AB%E6%94%BE%E7%BD%AE-%E8%8F%9C%E5%9C%B0%E7%9B%91%E6%8E%A7.js
+// @updateURL    https://raw.githubusercontent.com/nyChers/MoyuTools/master/MYTools-%E7%8C%AB%E7%8C%AB%E6%94%BE%E7%BD%AE-%E8%8F%9C%E5%9C%B0%E7%9B%91%E6%8E%A7.js
 // @grant        unsafeWindow
 // @grant        GM_getValue
 // @grant        GM_setValue

@@ -4,7 +4,8 @@
 // @version      1.0.14
 // @description  为猫猫放置游戏提供统一的 WebSocket 拦截和消息处理基础封装
 // @author       miaoaim over Lingma
-// @downloadURL  https://github.com/nyChers/MoyuTools/blob/master/MYTools-%E7%8C%AB%E7%8C%AB%E6%94%BE%E7%BD%AE-%E6%8F%92%E4%BB%B6%E5%9F%BA%E7%A1%80.js
+// @downloadURL  https://raw.githubusercontent.com/nyChers/MoyuTools/master/MYTools-%E7%8C%AB%E7%8C%AB%E6%94%BE%E7%BD%AE-%E6%8F%92%E4%BB%B6%E5%9F%BA%E7%A1%80.js
+// @updateURL    https://raw.githubusercontent.com/nyChers/MoyuTools/master/MYTools-%E7%8C%AB%E7%8C%AB%E6%94%BE%E7%BD%AE-%E6%8F%92%E4%BB%B6%E5%9F%BA%E7%A1%80.js
 // @match        *://*moyu-idle.com/*
 // @match        *://www.moyu-idle.com/*
 // @grant        unsafeWindow
